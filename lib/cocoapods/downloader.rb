@@ -51,10 +51,37 @@ module Pod
       if target && result.location && target != result.location
         UI.message "Copying #{request.name} from `#{result.location}` to #{UI.path target}", '> ' do
           FileUtils.rm_rf target
-          FileUtils.cp_r(result.location, target)
+          # FileUtils.cp_r(result.location, target)
+          link_entry("#{result.location}", "#{target}")
         end
       end
       result
+    end
+
+    def self.link_entry(src, dst)
+      
+      if File.symlink?(src)
+        src_sln = File::readlink(src)
+        FileUtils.ln_sf(src_sln, dst)
+        return
+      end
+      FileUtils.mkdir_p(dst)
+      Dir.foreach(src) do |file|
+        sub_src_path = src+"/"+file
+        sub_dst_path = dst+"/"+file
+        if File.directory?(sub_src_path) 
+          if file != "." and file != ".."
+            link_entry(sub_src_path, sub_dst_path)
+          end
+        else
+          if File.symlink?(sub_src_path)
+            sub_src_sln = File::readlink(sub_src_path)
+            FileUtils.ln_sf(sub_src_sln, sub_dst_path)
+          else
+            FileUtils.ln(sub_src_path, sub_dst_path)
+          end
+        end
+      end
     end
 
     # Performs the download from the given `request` to the given `target` location.
